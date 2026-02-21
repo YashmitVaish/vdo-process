@@ -1,5 +1,5 @@
 import os
-from utils.ffmpeg import process_video, merge_videos_with_crossfade
+from .utils.ffmpeg import process_video, merge_videos_with_crossfade
 
 def main():
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))

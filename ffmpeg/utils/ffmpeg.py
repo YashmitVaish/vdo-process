@@ -5,7 +5,7 @@ from scipy.signal import correlate
 import wave
 import contextlib
 
-from config import (
+from ..config import (
     TARGET_FPS,
     TARGET_HEIGHT,
     TARGET_LUFS,
