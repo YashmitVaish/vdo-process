@@ -204,8 +204,12 @@ def process_video(input_path, output_path):
     command.extend([
         "-ar", str(TARGET_SAMPLE_RATE),
         "-c:v", "libx264",
-        "-preset", "ultrafast",
+        "-profile:v", "main",
+        "-level", "4.0",
+        "-pix_fmt", "yuv420p",
+        "-preset", "medium",
         "-crf", "23",
+        "-movflags", "+faststart",
         "-c:a", "aac",
         "-b:v", "4M",
         output_path
@@ -248,9 +252,47 @@ def merge_videos_with_crossfade(video1, video2, output_path, fade_duration=2):
         "-map", "[vout]",
         "-map", "[aout]",
         "-c:v", "libx264",
-        "-preset", "ultrafast",
+        "-profile:v", "main",
+        "-level", "4.0",
+        "-pix_fmt", "yuv420p",
+        "-preset", "medium",
         "-crf", "23",
-        "-c:a", "aac",
+        "-movflags", "+faststart",
+        output_path
+    ]
+
+    return run_command(command)
+
+# -------------------------------------------------
+# Color Matching Between Two Videos
+# -------------------------------------------------
+
+def match_color(videoA, videoB, output_path):
+
+    command = [
+        "ffmpeg",
+        "-y",
+        "-i", videoA,
+        "-filter_complex",
+        (
+            "[0:v]"
+            "zscale=transfer=bt709:matrix=bt709:primaries=bt709,"
+            "histeq=strength=0.25:intensity=0.4,"
+            "colorlevels=rimin=0.05:gimin=0.05:bimin=0.05:"
+            "rimax=0.95:gimax=0.95:bimax=0.95,"
+            "colorbalance=rs=0.01:gs=0.00:bs=-0.01"
+            "[v]"
+        ),
+        "-map", "[v]",
+        "-map", "0:a?",
+        "-c:v", "libx264",
+        "-profile:v", "main",
+        "-level", "4.0",
+        "-pix_fmt", "yuv420p",
+        "-preset", "medium",
+        "-crf", "23",
+        "-movflags", "+faststart",
+        "-c:a", "copy",
         output_path
     ]
 
