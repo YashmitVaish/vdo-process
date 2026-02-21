@@ -1,6 +1,7 @@
 import time
 from redis_client import redis_client, JOB_QUEUE
-from job import jobs, JobStatus
+from job import jobs, JobStatus, JobType
+from ffmpeg.utils.ffmpeg import a
 
 print("Worker started...")
 
@@ -20,10 +21,9 @@ while True:
     try:
         job["status"] = JobStatus.processing
 
-        # Simulate work (replace with FFmpeg later)
-        for i in range(1, 6):
-            time.sleep(1)
-            job["progress"] = i * 20
+        if job["job_type"] == JobType.analyze:
+            
+
 
         job["status"] = JobStatus.completed
         job["progress"] = 100
