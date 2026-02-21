@@ -1,7 +1,6 @@
-import time
 from redis_client import redis_client, JOB_QUEUE
 from job import jobs, JobStatus, JobType
-from ffmpeg.utils.ffmpeg import a
+from ffmpeg.utils.ffmpeg import get_metadata
 
 print("Worker started...")
 
@@ -22,7 +21,10 @@ while True:
         job["status"] = JobStatus.processing
 
         if job["job_type"] == JobType.analyze:
-            
+            params = job.get("params")
+            file_path = params.get("input_path")
+            metadata = get_metadata(file_path)
+            job["outputs"]["metadata"] = metadata
 
 
         job["status"] = JobStatus.completed
