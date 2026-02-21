@@ -1,35 +1,55 @@
-from redis_client import redis_client, JOB_QUEUE
-from job import jobs, JobStatus, JobType
+import json
+from backend.utils.redis_client import redis_client, JOB_QUEUE
+from backend.utils.job import JobStatus, JobType
 from ffmpeg.utils.ffmpeg import get_metadata
+from backend.utils.minio import s3, BUCKET_NAME
 
 print("Worker started...")
 
 while True:
-    job_id = redis_client.brpop(JOB_QUEUE, timeout=5)
-
-    if not job_id:
+    item = redis_client.brpop(JOB_QUEUE, timeout=5)
+    print(item)
+    if not item:
         continue
 
-    job_id = job_id[1]
-    job = jobs.get(job_id)
-    print(job)
+    job_id = item[1]
+    job_key = f"job:{job_id}"
+    job = redis_client.hgetall(job_key)
 
     if not job:
         continue
 
     try:
-        job["status"] = JobStatus.processing
+        redis_client.hset(job_key, mapping={"status": JobStatus.processing.value})
 
-        if job["job_type"] == JobType.analyze:
-            params = job.get("params")
-            file_path = params.get("input_path")
-            metadata = get_metadata(file_path)
-            job["outputs"]["metadata"] = metadata
+        job_type = job["job_type"]
+        asset_ids = json.loads(job["asset_ids"])
 
+        if job_type == JobType.analyze.value:
+            asset_id = asset_ids[0]
+            key = f"raw/{asset_id}.mp4"
 
-        job["status"] = JobStatus.completed
-        job["progress"] = 100
+            redis_client.hset(job_key, mapping={"step": "analysis", "progress": 20})
+
+            input_url = s3.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": BUCKET_NAME, "Key": key},
+                ExpiresIn=3600,
+            )
+
+            metadata = get_metadata(input_url)
+            redis_client.hset(job_key, mapping={
+                "outputs": json.dumps({"metadata": metadata})
+            })
+
+        redis_client.hset(job_key, mapping={
+            "status": JobStatus.completed.value,
+            "progress": 100,
+            "step": "",
+        })
 
     except Exception as e:
-        job["status"] = JobStatus.failed
-        job["error"] = str(e)
+        redis_client.hset(job_key, mapping={
+            "status": JobStatus.failed.value,
+            "error": str(e),
+        })

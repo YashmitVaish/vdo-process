@@ -2,9 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from uuid import uuid4
-from utils.minio import BUCKET_NAME,s3
-from utils.redis_client import redis_client,JOB_QUEUE
-from utils.job import create_job,jobs,JobType
+from backend.utils.minio import BUCKET_NAME,s3
+from backend.utils.redis_client import redis_client,JOB_QUEUE
+from backend.utils.job import create_job,jobs,JobType
 
 app = FastAPI(title="Video Backend")
 app.add_middleware(
@@ -78,7 +78,7 @@ async def create_processing_job(req: CreateJobRequest):
 
 @app.post("/get-job-status/{job_id}",response_model=GetJobResponse)
 async def get_job_status(job_id : str):
-    job = jobs.get(job_id)
+    job = redis_client.hgetall(f"job:{job_id}")
     if not job:
         return {"status":"no job found (unknown)"}
     return {
