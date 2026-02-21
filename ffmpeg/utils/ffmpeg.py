@@ -295,3 +295,76 @@ def match_color(videoA, videoB, output_path):
     ]
 
     return run_command(command)
+
+def get_signal_stats(video_path):
+    command = [
+        "ffmpeg",
+        "-i", video_path,
+        "-vf", "signalstats",
+        "-f", "null",
+        "-"
+    ]
+
+    result = subprocess.run(command, capture_output=True, text=True)
+
+    lines = result.stderr.split("\n")
+
+    y_values = []
+    r_values = []
+    g_values = []
+    b_values = []
+
+    for line in lines:
+        if "Parsed_signalstats" in line:
+            if "YAVG" in line:
+                parts = line.split()
+                for part in parts:
+                    if "YAVG" in part:
+                        y_values.append(float(part.split(":")[1]))
+                    if "RAVG" in part:
+                        r_values.append(float(part.split(":")[1]))
+                    if "GAVG" in part:
+                        g_values.append(float(part.split(":")[1]))
+                    if "BAVG" in part:
+                        b_values.append(float(part.split(":")[1]))
+
+    return {
+        "YAVG": sum(y_values)/len(y_values) if y_values else 0,
+        "RAVG": sum(r_values)/len(r_values) if r_values else 0,
+        "GAVG": sum(g_values)/len(g_values) if g_values else 0,
+        "BAVG": sum(b_values)/len(b_values) if b_values else 0,
+    }
+    
+def apply_broadcast_match(videoA, videoB, output_path):
+
+    statsA = get_signal_stats(videoA)
+    statsB = get_signal_stats(videoB)
+
+    params = compute_matching_params(statsA, statsB)
+
+    filter_string = (
+        f"[0:v]"
+        f"eq=brightness={params['brightness']}:contrast=1.0:saturation=1.0,"
+        f"colorbalance=rs={params['red_shift']}:bs={params['blue_shift']}"
+        f"[v]"
+    )
+
+    command = [
+        "ffmpeg",
+        "-y",
+        "-i", videoA,
+        "-filter_complex", filter_string,
+        "-map", "[v]",
+        "-map", "0:a?",
+        "-c:v", "libx264",
+        "-profile:v", "main",
+        "-level", "4.0",
+        "-pix_fmt", "yuv420p",
+        "-preset", "medium",
+        "-crf", "23",
+        "-movflags", "+faststart",
+        "-c:a", "copy",
+        output_path
+    ]
+
+    return run_command(command)
