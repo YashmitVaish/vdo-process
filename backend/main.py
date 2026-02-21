@@ -1,10 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI,HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from uuid import uuid4
 from backend.utils.minio import BUCKET_NAME,s3
 from backend.utils.redis_client import redis_client,JOB_QUEUE
-from backend.utils.job import create_job,jobs,JobType
+from backend.utils.job import create_job,JobType
+import json
 
 app = FastAPI(title="Video Backend")
 app.add_middleware(
@@ -85,6 +86,32 @@ async def get_job_status(job_id : str):
         "status": job["status"]
     }
 
-@app.post("get-analysis/{job_id}")
-async def get_job_analytics(job_id : str)
-    
+@app.get("/get-analysis/{job_id}")
+async def get_job_analytics(job_id: str):
+    job = redis_client.hgetall(f"job:{job_id}")
+
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    def decode(x):
+        return x.decode() if isinstance(x, (bytes, bytearray)) else x
+
+    job = {decode(k): decode(v) for k, v in job.items()}
+
+    status = job.get("status")
+    progress = int(job.get("progress", 0))
+
+    if status != "completed":
+        return {
+            "status": status,
+            "progress": progress,
+            "step": job.get("step"),
+        }
+
+    outputs = json.loads(job.get("outputs", "{}"))
+    metadata = outputs.get("metadata")
+
+    if not metadata:
+        raise HTTPException(status_code=404, detail="Metadata missing")
+
+    return metadata
