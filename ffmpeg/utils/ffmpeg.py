@@ -277,10 +277,8 @@ def match_color(videoA, videoB, output_path):
         (
             "[0:v]"
             "zscale=transfer=bt709:matrix=bt709:primaries=bt709,"
-            "histeq=strength=0.25:intensity=0.4,"
-            "colorlevels=rimin=0.05:gimin=0.05:bimin=0.05:"
-            "rimax=0.95:gimax=0.95:bimax=0.95,"
-            "colorbalance=rs=0.01:gs=0.00:bs=-0.01"
+            "eq=contrast=1.03:saturation=1.02:brightness=0.01,"
+            "colorbalance=rs=0.01:bs=-0.01"
             "[v]"
         ),
         "-map", "[v]",
