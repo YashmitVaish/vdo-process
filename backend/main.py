@@ -84,3 +84,7 @@ async def get_job_status(job_id : str):
     return {
         "status": job["status"]
     }
+
+@app.post("get-analysis/{job_id}")
+async def get_job_analytics(job_id : str)
+    
