@@ -1,8 +1,8 @@
 import os
 from .utils.ffmpeg import (
     process_video,
-    merge_videos_with_crossfade,
-    match_color
+    apply_broadcast_match,
+    merge_videos_with_crossfade
 )
 
 def main():
@@ -13,13 +13,16 @@ def main():
 
     os.makedirs(OUTPUTS_DIR, exist_ok=True)
 
-    video1 = os.path.join(SAMPLES_DIR, "Test3.mp4")
-    video2 = os.path.join(SAMPLES_DIR, "Test4.mp4")
+    # Input videos
+    video1 = os.path.join(SAMPLES_DIR, "test1.mp4")
+    video2 = os.path.join(SAMPLES_DIR, "test2.mp4")
 
+    # Intermediate files
     normalized1 = os.path.join(OUTPUTS_DIR, "norm1.mp4")
     normalized2 = os.path.join(OUTPUTS_DIR, "norm2.mp4")
+    matched_video = os.path.join(OUTPUTS_DIR, "matched.mp4")
 
-    color_matched = os.path.join(OUTPUTS_DIR, "color_matched.mp4")
+    # Final output
     final_output = os.path.join(OUTPUTS_DIR, "merged_output.mp4")
 
     # -------------------------------------------------
@@ -33,20 +36,20 @@ def main():
     process_video(video2, normalized2)
 
     # -------------------------------------------------
-    # Step 2: Match Color of Video1 to Video2
+    # Step 2: Apply Broadcast Matching
     # -------------------------------------------------
 
-    print("Applying color matching...")
-    match_color(normalized1, normalized2, color_matched)
+    print("Applying broadcast matching (Video1 → Video2)...")
+    apply_broadcast_match(normalized1, normalized2, matched_video)
 
     # -------------------------------------------------
-    # Step 3: Merge with Smooth Audio Crossfade
+    # Step 3: Merge With Audio Crossfade
     # -------------------------------------------------
 
     print("Merging with smooth audio crossfade...")
-    merge_videos_with_crossfade(color_matched, normalized2, final_output, fade_duration=2)
+    merge_videos_with_crossfade(matched_video, normalized2, final_output, fade_duration=2)
 
-    print("Done.")
+    print("\nDone.")
     print("Final file:", final_output)
 
 
