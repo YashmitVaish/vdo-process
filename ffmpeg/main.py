@@ -14,16 +14,16 @@ def main():
     os.makedirs(OUTPUTS_DIR, exist_ok=True)
 
     # Input videos
-    video1 = os.path.join(SAMPLES_DIR, "Test3.mp4")
-    video2 = os.path.join(SAMPLES_DIR, "Test4.mp4")
+    video1 = os.path.join(SAMPLES_DIR, "test1.mp4")
+    video2 = os.path.join(SAMPLES_DIR, "test2.mp4")
 
     # Intermediate files
     normalized1 = os.path.join(OUTPUTS_DIR, "norm1.mp4")
     normalized2 = os.path.join(OUTPUTS_DIR, "norm2.mp4")
-    matched_video = os.path.join(OUTPUTS_DIR, "matched.mp4")
+    matched_video = os.path.join(OUTPUTS_DIR, "matched2.mp4")
 
     # Final output
-    final_output = os.path.join(OUTPUTS_DIR, "merged_output.mp4")
+    final_output = os.path.join(OUTPUTS_DIR, "merged_output1.mp4")
 
     # -------------------------------------------------
     # Step 1: Normalize Both Videos

@@ -64,12 +64,13 @@ import re
 def get_signal_stats(video_path):
 
     command = [
-        "ffmpeg",
-        "-i", video_path,
-        "-vf", "signalstats,metadata=print",
-        "-f", "null",
-        "-"
-    ]
+    "ffmpeg",
+    "-t", "5",
+    "-i", video_path,
+    "-vf", "signalstats,metadata=print",
+    "-f", "null",
+    "-"
+]
 
     result = subprocess.run(command, capture_output=True, text=True)
     output = result.stderr
@@ -145,7 +146,7 @@ def apply_broadcast_match(videoA, videoB, output_path):
         "-profile:v", "main",
         "-level", "4.0",
         "-pix_fmt", "yuv420p",
-        "-preset", "medium",
+        "-preset", "veryfast",
         "-crf", "23",
         "-movflags", "+faststart",
         "-c:a", "copy",
@@ -204,9 +205,10 @@ def process_video(input_path, output_path):
 
     # Audio
     if audio_stream:
+        audio_filters.append("afftdn")
         audio_filters.append(f"loudnorm=I={TARGET_LUFS}:LRA=11:TP=-1.5")
         audio_filters.append("alimiter")
-        audio_filters.append("afftdn")
+        
 
     command = [
         "ffmpeg",
@@ -226,7 +228,7 @@ def process_video(input_path, output_path):
         "-profile:v", "main",
         "-level", "4.0",
         "-pix_fmt", "yuv420p",
-        "-preset", "medium",
+        "-preset", "veryfast",
         "-crf", "23",
         "-movflags", "+faststart",
         "-c:a", "aac",
@@ -258,7 +260,7 @@ def merge_videos_with_crossfade(video1, video2, output_path, fade_duration=2):
         "-profile:v", "main",
         "-level", "4.0",
         "-pix_fmt", "yuv420p",
-        "-preset", "medium",
+        "-preset", "veryfast",
         "-crf", "23",
         "-movflags", "+faststart",
         "-c:a", "aac",
@@ -266,4 +268,4 @@ def merge_videos_with_crossfade(video1, video2, output_path, fade_duration=2):
         output_path
     ]
 
-    return run_command(command)
+    return run_command(command) 
