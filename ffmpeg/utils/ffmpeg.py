@@ -3,7 +3,6 @@ import json
 import numpy as np
 from scipy.signal import correlate
 import wave
-import contextlib
 
 from ..config import (
     TARGET_FPS,
@@ -57,71 +56,113 @@ def get_metadata(video_path):
 
 
 # -------------------------------------------------
-# Extract Audio for Sync Detection
+# Signal Statistics (Broadcast Matching)
 # -------------------------------------------------
 
-def extract_audio_wav(input_path, output_wav):
+import re
+
+def get_signal_stats(video_path):
+
     command = [
         "ffmpeg",
-        "-y",
-        "-i", input_path,
-        "-vn",
-        "-ac", "1",
-        "-ar", "44100",
-        "-acodec", "pcm_s16le",
-        output_wav
+        "-i", video_path,
+        "-vf", "signalstats,metadata=print",
+        "-f", "null",
+        "-"
     ]
-    run_command(command)
+
+    result = subprocess.run(command, capture_output=True, text=True)
+    output = result.stderr
+
+    y_values = []
+    r_values = []
+    g_values = []
+    b_values = []
+
+    for line in output.split("\n"):
+
+        if "lavfi.signalstats.YAVG" in line:
+            y_values.append(float(line.split("=")[-1]))
+
+        if "lavfi.signalstats.RAVG" in line:
+            r_values.append(float(line.split("=")[-1]))
+
+        if "lavfi.signalstats.GAVG" in line:
+            g_values.append(float(line.split("=")[-1]))
+
+        if "lavfi.signalstats.BAVG" in line:
+            b_values.append(float(line.split("=")[-1]))
+
+    return {
+        "YAVG": sum(y_values)/len(y_values) if y_values else 0,
+        "RAVG": sum(r_values)/len(r_values) if r_values else 0,
+        "GAVG": sum(g_values)/len(g_values) if g_values else 0,
+        "BAVG": sum(b_values)/len(b_values) if b_values else 0,
+    }
+
+def compute_matching_params(statsA, statsB):
+
+    brightness_shift = (statsB["YAVG"] - statsA["YAVG"]) / 255.0
+    red_shift = (statsB["RAVG"] - statsA["RAVG"]) / 255.0
+    blue_shift = (statsB["BAVG"] - statsA["BAVG"]) / 255.0
+
+    return {
+        "brightness": brightness_shift * 0.5,
+        "red_shift": red_shift * 0.5,
+        "blue_shift": blue_shift * 0.5
+    }
 
 
-# -------------------------------------------------
-# Audio Cross-Correlation Sync
-# -------------------------------------------------
+def apply_broadcast_match(videoA, videoB, output_path):
 
-def compute_audio_offset(file1, file2):
-    extract_audio_wav(file1, "temp1.wav")
-    extract_audio_wav(file2, "temp2.wav")
+    print("Analyzing source video...")
+    statsA = get_signal_stats(videoA)
 
-    with wave.open("temp1.wav", "rb") as w1:
-        data1 = np.frombuffer(w1.readframes(w1.getnframes()), dtype=np.int16)
+    print("Analyzing reference video...")
+    statsB = get_signal_stats(videoB)
 
-    with wave.open("temp2.wav", "rb") as w2:
-        data2 = np.frombuffer(w2.readframes(w2.getnframes()), dtype=np.int16)
+    print("Stats A:", statsA)
+    print("Stats B:", statsB)
 
-    correlation = correlate(data1, data2, mode='full')
-    lag = correlation.argmax() - (len(data2) - 1)
+    params = compute_matching_params(statsA, statsB)
 
-    sample_rate = 44100
-    offset_seconds = lag / sample_rate
+    print("Computed Matching Params:", params)
 
-    print(f"Detected sync offset: {offset_seconds:.3f} sec")
+    filter_string = (
+        f"[0:v]"
+        f"eq=brightness={params['brightness']}:contrast=1.0:saturation=1.0,"
+        f"colorbalance=rs={params['red_shift']}:bs={params['blue_shift']}"
+        f"[v]"
+    )
 
-    return offset_seconds
-
-
-# -------------------------------------------------
-# Apply Sync Offset
-# -------------------------------------------------
-
-def apply_sync_offset(input_path, output_path, offset):
     command = [
         "ffmpeg",
         "-y",
-        "-itsoffset", str(offset),
-        "-i", input_path,
-        "-c", "copy",
+        "-i", videoA,
+        "-filter_complex", filter_string,
+        "-map", "[v]",
+        "-map", "0:a?",
+        "-c:v", "libx264",
+        "-profile:v", "main",
+        "-level", "4.0",
+        "-pix_fmt", "yuv420p",
+        "-preset", "medium",
+        "-crf", "23",
+        "-movflags", "+faststart",
+        "-c:a", "copy",
         output_path
     ]
+
     return run_command(command)
 
 
 # -------------------------------------------------
-# Main Adaptive Harmonization Engine
+# Main Normalization Engine (NO COLOR GRADING HERE)
 # -------------------------------------------------
 
 def process_video(input_path, output_path):
-    metadata = get_metadata(input_path)
 
+    metadata = get_metadata(input_path)
     if not metadata:
         print("Invalid metadata")
         return
@@ -138,9 +179,7 @@ def process_video(input_path, output_path):
     video_filters = []
     audio_filters = []
 
-    # -------------------------
-    # Resolution + Aspect Ratio
-    # -------------------------
+    # Resolution
     if video_stream:
         width = int(video_stream.get("width", 0))
         height = int(video_stream.get("height", 0))
@@ -151,7 +190,7 @@ def process_video(input_path, output_path):
                 f"pad={TARGET_WIDTH}:{TARGET_HEIGHT}:(ow-iw)/2:(oh-ih)/2"
             )
 
-        # FPS Sync
+        # FPS
         fps_string = video_stream.get("r_frame_rate", "0/0")
         try:
             num, den = fps_string.split("/")
@@ -162,32 +201,13 @@ def process_video(input_path, output_path):
         if round(fps) != TARGET_FPS:
             video_filters.append(f"fps={TARGET_FPS}")
 
-        # Pixel format
         video_filters.append("format=yuv420p")
 
-        # Brightness Harmonization
-        video_filters.append("eq=brightness=0.02:contrast=1.05")
-
-    # -------------------------
-    # Audio Harmonization
-    # -------------------------
+    # Audio
     if audio_stream:
-        video_duration = float(video_stream.get("duration", 0))
-        audio_duration = float(audio_stream.get("duration", 0))
-
-        if abs(video_duration - audio_duration) > 0.2:
-            print("⚠ Potential A/V sync mismatch detected")
-
-        audio_filters.append(
-            f"loudnorm=I={TARGET_LUFS}:LRA=11:TP=-1.5"
-        )
-
+        audio_filters.append(f"loudnorm=I={TARGET_LUFS}:LRA=11:TP=-1.5")
         audio_filters.append("alimiter")
         audio_filters.append("afftdn")
-
-    # -------------------------
-    # Build Final FFmpeg Command
-    # -------------------------
 
     command = [
         "ffmpeg",
@@ -211,33 +231,17 @@ def process_video(input_path, output_path):
         "-crf", "23",
         "-movflags", "+faststart",
         "-c:a", "aac",
-        "-b:v", "4M",
         output_path
     ])
 
     return run_command(command)
+
+
+# -------------------------------------------------
+# Crossfade Merge
+# -------------------------------------------------
+
 def merge_videos_with_crossfade(video1, video2, output_path, fade_duration=2):
-    """
-    Smoothly merges two videos with audio crossfade transition.
-    fade_duration = seconds of audio crossfade
-    """
-
-    # Step 1: Get duration of first video
-    metadata1 = get_metadata(video1)
-    if not metadata1:
-        print("Error reading metadata of first video")
-        return
-
-    video_stream1 = None
-    for stream in metadata1.get("streams", []):
-        if stream["codec_type"] == "video":
-            video_stream1 = stream
-            break
-
-    duration1 = float(video_stream1.get("duration", 0))
-
-    # Crossfade should start fade_duration seconds before video1 ends
-    offset = duration1 - fade_duration
 
     command = [
         "ffmpeg",
@@ -258,39 +262,8 @@ def merge_videos_with_crossfade(video1, video2, output_path, fade_duration=2):
         "-preset", "medium",
         "-crf", "23",
         "-movflags", "+faststart",
-        output_path
-    ]
-
-    return run_command(command)
-
-# -------------------------------------------------
-# Color Matching Between Two Videos
-# -------------------------------------------------
-
-def match_color(videoA, videoB, output_path):
-
-    command = [
-        "ffmpeg",
-        "-y",
-        "-i", videoA,
-        "-filter_complex",
-        (
-            "[0:v]"
-            "zscale=transfer=bt709:matrix=bt709:primaries=bt709,"
-            "eq=contrast=1.03:saturation=1.02:brightness=0.01,"
-            "colorbalance=rs=0.01:bs=-0.01"
-            "[v]"
-        ),
-        "-map", "[v]",
-        "-map", "0:a?",
-        "-c:v", "libx264",
-        "-profile:v", "main",
-        "-level", "4.0",
-        "-pix_fmt", "yuv420p",
-        "-preset", "medium",
-        "-crf", "23",
-        "-movflags", "+faststart",
-        "-c:a", "copy",
+        "-c:a", "aac",
+        "-b:a", "192k",
         output_path
     ]
 
