@@ -1,6 +1,8 @@
 from enum import Enum
 from uuid import uuid4
 from typing import Dict
+import json
+from backend.utils.redis_client import redis_client
 
 class JobStatus(str, Enum):
     queued = "queued"
@@ -34,5 +36,14 @@ def create_job(
         "error": None,
     }
 
-    jobs[job_id] = job
+    redis_client.hset(
+        f"job:{job_id}",
+        mapping={
+            "job_id": job_id,
+            "job_type": job_type.value,
+            "asset_ids": json.dumps(asset_ids),
+            "status": JobStatus.queued.value,
+            "progress": 0,
+        }
+    )
     return job
