@@ -74,44 +74,44 @@ def get_signal_stats(video_path):
     result = subprocess.run(command, capture_output=True, text=True)
     output = result.stderr
 
-    y_values = []
-    r_values = []
-    g_values = []
-    b_values = []
+    y_avg = []
+    y_low = []
+    y_high = []
 
     for line in output.split("\n"):
 
         if "lavfi.signalstats.YAVG" in line:
-            y_values.append(float(line.split("=")[-1]))
+            y_avg.append(float(line.split("=")[-1]))
 
-        if "lavfi.signalstats.RAVG" in line:
-            r_values.append(float(line.split("=")[-1]))
+        if "lavfi.signalstats.YLOW" in line:
+            y_low.append(float(line.split("=")[-1]))
 
-        if "lavfi.signalstats.GAVG" in line:
-            g_values.append(float(line.split("=")[-1]))
-
-        if "lavfi.signalstats.BAVG" in line:
-            b_values.append(float(line.split("=")[-1]))
+        if "lavfi.signalstats.YHIGH" in line:
+            y_high.append(float(line.split("=")[-1]))
 
     return {
-        "YAVG": sum(y_values)/len(y_values) if y_values else 0,
-        "RAVG": sum(r_values)/len(r_values) if r_values else 0,
-        "GAVG": sum(g_values)/len(g_values) if g_values else 0,
-        "BAVG": sum(b_values)/len(b_values) if b_values else 0,
+        "YAVG": sum(y_avg)/len(y_avg) if y_avg else 0,
+        "YLOW": sum(y_low)/len(y_low) if y_low else 0,
+        "YHIGH": sum(y_high)/len(y_high) if y_high else 0,
     }
 
 def compute_matching_params(statsA, statsB):
 
     brightness_shift = (statsB["YAVG"] - statsA["YAVG"]) / 255.0
-    red_shift = (statsB["RAVG"] - statsA["RAVG"]) / 255.0
-    blue_shift = (statsB["BAVG"] - statsA["BAVG"]) / 255.0
+
+    # Contrast scaling based on dynamic range
+    rangeA = statsA["YHIGH"] - statsA["YLOW"]
+    rangeB = statsB["YHIGH"] - statsB["YLOW"]
+
+    contrast_scale = (rangeB / rangeA) if rangeA != 0 else 1.0
+
+    # Keep correction safe
+    contrast_scale = max(0.8, min(1.2, contrast_scale))
 
     return {
-        "brightness": brightness_shift * 0.5,
-        "red_shift": red_shift * 0.5,
-        "blue_shift": blue_shift * 0.5
+        "brightness": brightness_shift * 0.7,
+        "contrast": contrast_scale
     }
-
 
 def apply_broadcast_match(videoA, videoB, output_path):
 
@@ -130,8 +130,7 @@ def apply_broadcast_match(videoA, videoB, output_path):
 
     filter_string = (
         f"[0:v]"
-        f"eq=brightness={params['brightness']}:contrast=1.0:saturation=1.0,"
-        f"colorbalance=rs={params['red_shift']}:bs={params['blue_shift']}"
+        f"eq=brightness={params['brightness']}:contrast={params['contrast']}"
         f"[v]"
     )
 

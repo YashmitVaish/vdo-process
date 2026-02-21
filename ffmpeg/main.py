@@ -14,8 +14,8 @@ def main():
     os.makedirs(OUTPUTS_DIR, exist_ok=True)
 
     # Input videos
-    video1 = os.path.join(SAMPLES_DIR, "test1.mp4")
-    video2 = os.path.join(SAMPLES_DIR, "test2.mp4")
+    video1 = os.path.join(SAMPLES_DIR, "Test3.mp4")
+    video2 = os.path.join(SAMPLES_DIR, "Test4.mp4")
 
     # Intermediate files
     normalized1 = os.path.join(OUTPUTS_DIR, "norm1.mp4")
