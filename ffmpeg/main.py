@@ -9,9 +9,9 @@ def main():
 
     os.makedirs(OUTPUTS_DIR, exist_ok=True)
 
-    video1 = os.path.join(SAMPLES_DIR, "test1.mp4")
+    video1 = os.path.join(SAMPLES_DIR, "test1.mp4") 
     video2 = os.path.join(SAMPLES_DIR, "test2.mp4")
-
+    
     normalized1 = os.path.join(OUTPUTS_DIR, "norm1.mp4")
     normalized2 = os.path.join(OUTPUTS_DIR, "norm2.mp4")
 
