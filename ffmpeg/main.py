@@ -1,41 +1,33 @@
 import os
-from utils.ffmpeg import get_metadata,analyze,normalize_audio,normalize_fps,normalize_resolution
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(BASE_DIR)
+from .utils.ffmpeg import process_video, merge_videos_with_crossfade
 
-INPUT_VIDEO = os.path.join(PROJECT_ROOT, "samples", "test1.mp4")
-OUTPUT_DIR = os.path.join(PROJECT_ROOT, "outputs")
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+def main():
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-INPUT_VIDEO = os.path.join(PROJECT_ROOT, "samples", "test1.mp4")
-TEMP1 = os.path.join(PROJECT_ROOT, "outputs", "temp1.mp4")
-TEMP2 = os.path.join(PROJECT_ROOT, "outputs", "temp2.mp4")
-FINAL = os.path.join(PROJECT_ROOT, "outputs", "final.mp4")
+    SAMPLES_DIR = os.path.join(BASE_DIR, "samples")
+    OUTPUTS_DIR = os.path.join(BASE_DIR, "outputs")
 
-os.makedirs(os.path.join(PROJECT_ROOT, "outputs"), exist_ok=True)
+    os.makedirs(OUTPUTS_DIR, exist_ok=True)
 
-print("Extracting metadata...")
-metadata = get_metadata(INPUT_VIDEO)
+    video1 = os.path.join(SAMPLES_DIR, "test1.mp4") 
+    video2 = os.path.join(SAMPLES_DIR, "test2.mp4")
+    
+    normalized1 = os.path.join(OUTPUTS_DIR, "norm1.mp4")
+    normalized2 = os.path.join(OUTPUTS_DIR, "norm2.mp4")
 
-print("Analyzing...")
-analysis = analyze(metadata)
+    final_output = os.path.join(OUTPUTS_DIR, "merged_output.mp4")
 
-current = INPUT_VIDEO
+    print("Normalizing first video...")
+    process_video(video1, normalized1)
 
-if analysis["resolution"]:
-    print("Fixing resolution...")
-    normalize_resolution(current, TEMP1)
-    current = TEMP1
+    print("Normalizing second video...")
+    process_video(video2, normalized2)
 
-if analysis["fps"]:
-    print("Fixing FPS...")
-    normalize_fps(current, TEMP2)
-    current = TEMP2
+    print("Merging with smooth audio crossfade...")
+    merge_videos_with_crossfade(normalized1, normalized2, final_output, fade_duration=2)
 
-if analysis["audio"]:
-    print("Fixing audio...")
-    normalize_audio(current, FINAL)
-    current = FINAL
+    print("Done.")
+    print("Final file:", final_output)
 
-print("Processing complete.")
-print("Final file:", current)
+if __name__ == "__main__":
+    main()
