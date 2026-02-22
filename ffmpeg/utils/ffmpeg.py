@@ -242,8 +242,7 @@ def process_video(input_path, output_path):
 # Crossfade Merge
 # -------------------------------------------------
 
-def merge_videos_with_crossfade(video1, video2, output_path, fade_duration=2):
-
+def merge_videos_with_crossfade(video1, video2, output_path, fade_duration=2, offset=0):
     command = [
         "ffmpeg",
         "-y",
@@ -251,21 +250,18 @@ def merge_videos_with_crossfade(video1, video2, output_path, fade_duration=2):
         "-i", video2,
         "-filter_complex",
         (
-            f"[0:a][1:a]acrossfade=d={fade_duration}:c1=exp:c2=exp[aout];"
-            f"[0:v][1:v]concat=n=2:v=1:a=0[vout]"
+            f"[0:v][1:v]xfade=transition=fade:duration={fade_duration}:offset={offset}[vout];"
+            f"[0:a][1:a]acrossfade=d={fade_duration}:c1=exp:c2=exp[aout]"
         ),
         "-map", "[vout]",
         "-map", "[aout]",
         "-c:v", "libx264",
-        "-profile:v", "main",
-        "-level", "4.0",
-        "-pix_fmt", "yuv420p",
         "-preset", "veryfast",
-        "-crf", "23",
+        "-pix_fmt", "yuv420p",
         "-movflags", "+faststart",
         "-c:a", "aac",
         "-b:a", "192k",
         output_path
     ]
 
-    return run_command(command) 
+    return run_command(command)
