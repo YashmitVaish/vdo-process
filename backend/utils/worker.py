@@ -137,7 +137,7 @@ while True:
                 "outputs": json.dumps({"merged_key": output_key}),
                 "status": JobStatus.completed.value,
                 "progress": 100,
-                "step": None,
+                "step": "done",
             })
             
         redis_client.hset(job_key, mapping={
