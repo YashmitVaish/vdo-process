@@ -18,12 +18,6 @@ const frameRates = [
   { label: "60 fps", desc: "Smooth" },
 ];
 
-const aspectRatios = [
-  { label: "16:9", desc: "Widescreen" },
-  { label: "9:16", desc: "Vertical / Mobile" },
-  { label: "1:1", desc: "Square" },
-];
-
 interface OptionGroupProps {
   title: string;
   icon: React.ReactNode;
@@ -83,7 +77,7 @@ const ProcessingOptions = ({ videosCount }: ProcessingOptionsProps) => {
       <h2 className="text-lg font-semibold text-foreground">
         Processing Options
       </h2>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <OptionGroup
           title="Resolution"
           icon={<Monitor className="h-4 w-4 text-primary" />}
@@ -97,13 +91,6 @@ const ProcessingOptions = ({ videosCount }: ProcessingOptionsProps) => {
           options={frameRates}
           selected={selFps}
           onSelect={setSelFps}
-        />
-        <OptionGroup
-          title="Aspect Ratio"
-          icon={<Maximize className="h-4 w-4 text-primary" />}
-          options={aspectRatios}
-          selected={selAr}
-          onSelect={setSelAr}
         />
       </div>
     </motion.div>
