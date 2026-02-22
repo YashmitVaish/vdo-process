@@ -5,6 +5,14 @@ from ffmpeg.utils.ffmpeg import get_metadata,process_video,merge_videos_with_cro
 from backend.utils.minio import s3, BUCKET_NAME
 
 from pathlib import Path
+from backend.utils.mongo import jobs_col, assets_col
+from datetime import datetime, timezone
+
+def update_job_mongo(job_id, fields):
+    jobs_col.update_one(
+        {"_id": job_id},
+        {"$set": {**fields, "updated_at": datetime.now(timezone.utc)}}
+    )
 
 TEMP_DIR = Path("tmp")
 TEMP_DIR.mkdir(exist_ok=True)
@@ -48,6 +56,8 @@ while True:
                 "outputs": json.dumps({"metadata": metadata})
             })
 
+            update_job_mongo(job_id, {"status": JobStatus.completed.value, "progress": 100, "outputs": {"metadata": metadata}})
+
         if job_type == JobType.normalize.value:
             asset_id = asset_ids[0]
             key = f"raw/{asset_id}.mp4"
@@ -85,6 +95,9 @@ while True:
                 "status": JobStatus.completed.value,
                 "step": "complete",
             })
+
+            update_job_mongo(job_id, {"status": JobStatus.completed.value, "progress": 100, "outputs": {"normalized_key": output_key}})
+            assets_col.update_one({"_id": asset_id}, {"$set": {"normalized_key": output_key, "status": "normalized"}})
         
         if job_type == JobType.merge.value:
             redis_client.hset(job_key, mapping={
@@ -139,6 +152,8 @@ while True:
                 "progress": 100,
                 "step": "done",
             })
+
+            update_job_mongo(job_id, {"status": JobStatus.completed.value, "progress": 100, "outputs": {"merged_key": output_key}})
             
         redis_client.hset(job_key, mapping={
             "status": JobStatus.completed.value,
@@ -148,6 +163,8 @@ while True:
 
     except Exception as e:
         print(e)
+        update_job_mongo(job_id, {"status": JobStatus.failed.value, "progress": 0, "outputs": {"error": str(e)}})
+
         redis_client.hset(job_key, mapping={
             "status": JobStatus.failed.value,
             "error": str(e),

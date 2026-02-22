@@ -5,6 +5,8 @@ from uuid import uuid4
 from backend.utils.minio import BUCKET_NAME,s3
 from backend.utils.redis_client import redis_client,JOB_QUEUE
 from backend.utils.job import create_job,JobType
+from backend.utils.mongo import assets_col
+from datetime import datetime , timezone
 import json
 
 app = FastAPI(title="Video Backend")
@@ -45,6 +47,14 @@ async def get_upload_url():
         },
         ExpiresIn=3600,
     )
+
+    assets_col.insert_one({
+        "_id": asset_id,
+        "raw_key": object_key,
+        "normalized_key": None,
+        "status": "uploaded",
+        "created_at": datetime.now(timezone.utc),
+    })
 
     return {
         "asset_id": asset_id,

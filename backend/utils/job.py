@@ -3,6 +3,8 @@ from uuid import uuid4
 from typing import Dict
 import json
 from backend.utils.redis_client import redis_client
+from backend.utils.mongo import jobs_col  # just import, don't redefine
+from datetime import datetime, timezone
 
 class JobStatus(str, Enum):
     queued = "queued"
@@ -15,35 +17,30 @@ class JobType(str, Enum):
     analyze = "analyze"
     merge = "merge"
 
-jobs: Dict[str, dict] = {}
-
-def create_job(
-    asset_ids: list[str],
-    job_type: JobType,
-    params: dict | None = None
-) -> dict:
+def create_job(asset_ids: list[str], job_type: JobType, params: dict | None = None) -> dict:
     job_id = str(uuid4())
+    now = datetime.now(timezone.utc)
 
     job = {
         "job_id": job_id,
-        "job_type": job_type,
+        "job_type": job_type.value,  # serialize enum to string
         "asset_ids": asset_ids,
-        "params": params or {},
-        "status": JobStatus.queued,
+        "status": JobStatus.queued.value,  # serialize enum to string
         "step": None,
         "progress": 0,
         "outputs": {},
         "error": None,
+        "created_at": now,
+        "updated_at": now,
     }
 
-    redis_client.hset(
-        f"job:{job_id}",
-        mapping={
-            "job_id": job_id,
-            "job_type": job_type.value,
-            "asset_ids": json.dumps(asset_ids),
-            "status": JobStatus.queued.value,
-            "progress": 0,
-        }
-    )
+    redis_client.hset(f"job:{job_id}", mapping={
+        "job_id": job_id,
+        "job_type": job_type.value,
+        "asset_ids": json.dumps(asset_ids),
+        "status": JobStatus.queued.value,
+        "progress": 0,
+    })
+
+    jobs_col.insert_one({**job, "_id": job_id})
     return job
