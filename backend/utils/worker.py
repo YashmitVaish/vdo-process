@@ -3,6 +3,7 @@ from backend.utils.redis_client import redis_client, JOB_QUEUE
 from backend.utils.job import JobStatus, JobType
 from ffmpeg.utils.ffmpeg import get_metadata,process_video,merge_videos_with_crossfade
 from backend.utils.minio import s3, BUCKET_NAME
+from backend.utils.stream_manager import start_stream
 
 from pathlib import Path
 from backend.utils.mongo import jobs_col, assets_col
@@ -154,7 +155,46 @@ while True:
             })
 
             update_job_mongo(job_id, {"status": JobStatus.completed.value, "progress": 100, "outputs": {"merged_key": output_key}})
-            
+        
+        if job_type == JobType.livestream.value:
+            # asset_ids[0] is the RTSP URL for livestream jobs
+            # (not a MinIO asset — just the camera URL string)
+            rtsp_url = asset_ids[0]
+
+            redis_client.hset(job_key, mapping={
+                "step": "starting_stream",
+                "progress": 10,
+                "status": JobStatus.processing.value,
+            })
+
+            result = start_stream(rtsp_url)  # non-blocking — returns immediately
+
+            # The job is "complete" in the sense that we successfully started the
+            # stream. The stream itself runs indefinitely in stream_manager.
+            redis_client.hset(job_key, mapping={
+                "outputs": json.dumps({
+                    "stream_id": result["stream_id"],
+                    "rtmp_url": result["rtmp_url"],
+                    "hls_preview": result["hls_preview"],
+                }),
+                "status": JobStatus.completed.value,
+                "progress": 100,
+                "step": "streaming",
+            })
+
+            update_job_mongo(job_id, {
+                "status": JobStatus.completed.value,
+                "progress": 100,
+                "outputs": {
+                    "stream_id": result["stream_id"],
+                    "rtmp_url": result["rtmp_url"],
+                    "hls_preview": result["hls_preview"],
+                },
+            })
+
+            # Skip the generic "completed" hset below — already done above
+            continue
+
         redis_client.hset(job_key, mapping={
             "status": JobStatus.completed.value,
             "progress": 100,

@@ -20,5 +20,20 @@ services:
     ports:
       - "6379:6379"
 
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    container_name: mediamtx
+    restart: unless-stopped
+    network_mode: host          # simplest for local dev — cameras on LAN are reachable
+    environment:
+      - MTX_PROTOCOLS=tcp       # force TCP for RTSP (more reliable than UDP for cameras)
+    ports:
+      - "8554:8554"   # RTSP
+      - "1935:1935"   # RTMP in  (your worker pushes here)
+      - "8888:8888"   # HLS  out (optional, for browser preview)
+      - "8889:8889"   # WebRTC out (optional)
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml   # optional custom config, see below
+
 volumes:
   minio_data:

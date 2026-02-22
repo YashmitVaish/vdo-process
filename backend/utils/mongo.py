@@ -13,3 +13,4 @@ client = MongoClient(
 db = client["video_backend"]
 assets_col = db["assets"]
 jobs_col = db["jobs"]
+streams_col = db["streams"]

@@ -6,6 +6,7 @@ from backend.utils.minio import BUCKET_NAME,s3
 from backend.utils.redis_client import redis_client,JOB_QUEUE
 from backend.utils.job import create_job,JobType
 from backend.utils.mongo import assets_col
+from backend.utils.stream_manager import start_stream,get_stream_status,stop_stream,list_active_streams
 from datetime import datetime , timezone
 import json
 
@@ -125,3 +126,80 @@ async def get_job_analytics(job_id: str):
         raise HTTPException(status_code=404, detail="Metadata missing")
 
     return metadata
+
+class StartStreamRequest(BaseModel):
+    rtsp_url: str
+    stream_id: str | None = None  # optional — auto-generated if not provided
+
+
+class StartStreamResponse(BaseModel):
+    stream_id: str
+    rtmp_url: str
+    hls_preview: str
+    status: str
+
+
+class StreamStatusResponse(BaseModel):
+    stream_id: str
+    status: str
+    rtsp_url: str
+    rtmp_url: str
+    hls_preview: str | None = None
+    reconnect_attempt: int | None = None
+
+@app.post("/streams/start", response_model=StartStreamResponse)
+async def api_start_stream(req: StartStreamRequest):
+    """
+    Start a live RTSP → normalize → RTMP stream.
+
+    The RTSP URL is the camera source (e.g. rtsp://192.168.1.50/stream1).
+    The normalized stream will be published to MediaMTX at:
+        rtmp://localhost:1935/live/{stream_id}
+
+    You can also view it in a browser via HLS at:
+        http://localhost:8888/{stream_id}/index.m3u8
+    """
+    try:
+        result = start_stream(req.rtsp_url, stream_id=req.stream_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return result
+
+
+@app.post("/streams/{stream_id}/stop")
+async def api_stop_stream(stream_id: str):
+    """
+    Stop a running stream.
+    """
+    try:
+        result = stop_stream(stream_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return result
+
+
+@app.get("/streams/{stream_id}/status", response_model=StreamStatusResponse)
+async def api_stream_status(stream_id: str):
+    """
+    Get current status of a stream from Redis.
+    """
+    data = get_stream_status(stream_id)
+    if not data:
+        raise HTTPException(status_code=404, detail="Stream not found")
+
+    return {
+        "stream_id": stream_id,
+        "status": data.get("status", "unknown"),
+        "rtsp_url": data.get("rtsp_url", ""),
+        "rtmp_url": data.get("rtmp_url", ""),
+        "hls_preview": f"http://localhost:8888/{stream_id}/index.m3u8",
+        "reconnect_attempt": int(data.get("reconnect_attempt", 0)),
+    }
+
+
+@app.get("/streams")
+async def api_list_streams():
+    """
+    List all currently active stream IDs.
+    """
+    return {"active_streams": list_active_streams()}
