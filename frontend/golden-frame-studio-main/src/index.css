@@ -1,0 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 4%;
+    --foreground: 43 30% 90%;
+
+    --card: 0 0% 7%;
+    --card-foreground: 43 30% 90%;
+
+    --popover: 0 0% 8%;
+    --popover-foreground: 43 30% 90%;
+
+    --primary: 43 60% 55%;
+    --primary-foreground: 0 0% 4%;
+
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 43 30% 85%;
+
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 50%;
+
+    --accent: 43 60% 55%;
+    --accent-foreground: 0 0% 4%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 43 15% 18%;
+    --input: 0 0% 14%;
+    --ring: 43 60% 55%;
+
+    --radius: 0.75rem;
+
+    /* Custom tokens */
+    --gold: 43 60% 55%;
+    --gold-light: 43 70% 70%;
+    --gold-dark: 43 50% 35%;
+    --gold-glow: 43 80% 50%;
+    --surface-elevated: 0 0% 9%;
+    --surface-hover: 0 0% 12%;
+
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 43 30% 85%;
+    --sidebar-primary: 43 60% 55%;
+    --sidebar-primary-foreground: 0 0% 4%;
+    --sidebar-accent: 0 0% 10%;
+    --sidebar-accent-foreground: 43 30% 85%;
+    --sidebar-border: 43 15% 15%;
+    --sidebar-ring: 43 60% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer utilities {
+  .gold-gradient {
+    background: linear-gradient(135deg, hsl(43 60% 55%), hsl(43 70% 70%));
+  }
+
+  .gold-text-gradient {
+    background: linear-gradient(135deg, hsl(43 60% 55%), hsl(43 70% 70%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gold-border-glow {
+    box-shadow: 0 0 15px -3px hsl(43 80% 50% / 0.15),
+                inset 0 0 15px -3px hsl(43 80% 50% / 0.05);
+  }
+
+  .gold-glow {
+    box-shadow: 0 0 30px -5px hsl(43 80% 50% / 0.25);
+  }
+
+  .surface-glass {
+    background: hsl(0 0% 7% / 0.8);
+    backdrop-filter: blur(12px);
+  }
+
+  .upload-zone-active {
+    border-color: hsl(43 60% 55%);
+    background: hsl(43 60% 55% / 0.05);
+    box-shadow: 0 0 40px -10px hsl(43 80% 50% / 0.3);
+  }
+}

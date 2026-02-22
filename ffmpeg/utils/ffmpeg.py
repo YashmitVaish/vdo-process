@@ -247,11 +247,14 @@ def process_video(input_path, output_path):
 
 def merge_videos_with_crossfade(video1, video2, output_path, fade_duration=2):
 
+    temp_1 = process_video(video1,"vid1.mp4")
+    temp_2 = process_video(video2,"vid2.mp4")
+
     command = [
         "ffmpeg",
         "-y",
-        "-i", video1,
-        "-i", video2,
+        "-i", "vid1.mp4",
+        "-i", "vid2.mp4",
         "-filter_complex",
         (
             f"[0:a][1:a]acrossfade=d={fade_duration}:c1=exp:c2=exp[aout];"

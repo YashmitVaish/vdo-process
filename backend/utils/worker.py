@@ -136,7 +136,6 @@ while True:
                 str(local_2),
                 str(output_path),
                 fade_duration=2,
-                offset=duration - 2
             )
 
             if not success:
