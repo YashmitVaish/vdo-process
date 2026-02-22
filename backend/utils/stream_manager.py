@@ -7,9 +7,6 @@ from datetime import datetime, timezone
 from backend.utils.mongo import streams_col
 
 from backend.utils.redis_client import redis_client
-# ---------------------------------------------------------------------------
-# Config — import from your config.py
-# ---------------------------------------------------------------------------
 from ffmpeg.config import (
     TARGET_WIDTH,
     TARGET_HEIGHT,
@@ -121,11 +118,7 @@ def _build_ffmpeg_command(input_url: str, rtmp_url: str, has_audio: bool) -> lis
     return cmd
 
 def _monitor_process(stream_id: str):
-    """
-    Runs in a thread. Watches the FFmpeg process and updates Redis/Mongo
-    when the stream ends (camera disconnect, network drop, explicit stop).
-    Also handles reconnection if the stream drops unexpectedly.
-    """
+
     MAX_RECONNECT_ATTEMPTS = 5
     RECONNECT_DELAY = 5  # seconds between reconnect attempts
 
@@ -190,17 +183,7 @@ def _monitor_process(stream_id: str):
             break
 
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
-
 def start_stream(rtsp_url: str, stream_id: str | None = None) -> dict:
-    """
-    Start a live RTSP → normalize → RTMP stream.
-
-    Returns a dict with stream_id, rtmp_url, status.
-    Raises RuntimeError if the RTSP source can't be probed.
-    """
     stream_id = stream_id or str(uuid4())
     rtmp_url = f"{MEDIAMTX_RTMP_BASE}/{stream_id}"
 
@@ -274,9 +257,7 @@ def start_stream(rtsp_url: str, stream_id: str | None = None) -> dict:
 
 
 def stop_stream(stream_id: str) -> dict:
-    """
-    Gracefully stop a running stream.
-    """
+
     entry = ACTIVE_STREAMS.get(stream_id)
     if not entry:
         raise RuntimeError(f"Stream {stream_id} not found in active streams.")
@@ -303,9 +284,7 @@ def stop_stream(stream_id: str) -> dict:
 
 
 def get_stream_status(stream_id: str) -> dict | None:
-    """
-    Get current stream status from Redis.
-    """
+    
     data = redis_client.hgetall(_redis_key(stream_id))
     if not data:
         return None
