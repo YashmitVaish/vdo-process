@@ -1,0 +1,27 @@
+
+
+logLevel: info
+logDestinations: [stdout]
+
+# Allow anyone to publish/read (tighten this in production)
+authMethod: none
+
+rtsp: yes
+rtspAddress: :8554
+protocols: [tcp]
+
+rtmp: yes
+rtmpAddress: :1935
+
+hls: yes
+hlsAddress: :8888
+hlsAlwaysRemux: yes   # auto-create HLS for every stream (browser preview)
+
+webrtc: yes
+webrtcAddress: :8889
+
+# Paths — each camera stream becomes a named path
+# e.g. rtmp://localhost:1935/live/cam1  →  mediamtx path = live/cam1
+paths:
+  "~^live/.+$":   # regex: match anything under /live/
+    source: publisher
