@@ -186,8 +186,11 @@ def process_video(input_path, output_path):
 
         if width != TARGET_WIDTH or height != TARGET_HEIGHT:
             video_filters.append(
-                f"scale={TARGET_WIDTH}:{TARGET_HEIGHT}:force_original_aspect_ratio=decrease,"
-                f"pad={TARGET_WIDTH}:{TARGET_HEIGHT}:(ow-iw)/2:(oh-ih)/2"
+                f"scale={TARGET_WIDTH}:{TARGET_HEIGHT}:flags=lanczos:"
+                f"force_original_aspect_ratio=decrease,"
+                f"pad={TARGET_WIDTH}:{TARGET_HEIGHT}:(ow-iw)/2:(oh-ih)/2,"
+                f"unsharp=9:9:2.0:9:9:0.0,"
+                f"eq=contrast=1.05"
             )
 
         # FPS
