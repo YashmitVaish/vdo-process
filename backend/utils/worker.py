@@ -147,13 +147,13 @@ while True:
             s3.upload_file(str(output_path), BUCKET_NAME, output_key)
 
             redis_client.hset(job_key, mapping={
-                "outputs": json.dumps({"merged_key": output_key}),
+                "outputs": json.dumps({"metadata":{"merged_key": output_key}}),
                 "status": JobStatus.completed.value,
                 "progress": 100,
                 "step": "done",
             })
 
-            update_job_mongo(job_id, {"status": JobStatus.completed.value, "progress": 100, "outputs": {"merged_key": output_key}})
+            update_job_mongo(job_id, {"status": JobStatus.completed.value, "progress": 100, "outputs": {"metadata":{"merged_key": output_key}}})
         
         if job_type == JobType.livestream.value:
             # asset_ids[0] is the RTSP URL for livestream jobs
